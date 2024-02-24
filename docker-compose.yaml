@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/database.db:/app/data/database.db
+    environment:
+      - BASE_URL=https://inxo.ru/
+      - DATABASE_FILE=data/database.db
+#    entrypoint: /app/bin/short
+#    command: ls
