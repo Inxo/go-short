@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener Statistics</title>
+</head>
+<body>
+<h1>URL Shortener Statistics</h1>
+<table>
+    <tr>
+        <th>Short URL</th>
+        <th>Long URL</th>
+        <th>Clicks</th>
+    </tr>
+    {{range .}}
+    <tr>
+        <td>{{.Short}}</td>
+        <td>{{.Long}}</td>
+        <td>{{.Clicks}}</td>
+    </tr>
+    {{end}}
+</table>
+</body>
+</html>

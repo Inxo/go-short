@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
 	"math/rand"
 	"net/http"
@@ -16,6 +17,62 @@ var (
 	baseUrl      = os.Getenv("BASE_URL")
 	databaseFile = os.Getenv("DATABASE_FILE")
 )
+var templates = template.Must(template.ParseFiles("templates/stats.html"))
+
+type URLInfo struct {
+	Short  string
+	Long   string
+	Clicks int
+}
+
+func statsHandler(w http.ResponseWriter, _ *http.Request) {
+	// Открываем соединение с базой данных
+	db, err := sql.Open("sqlite3", databaseFile)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		log.Println("Database connection error:", err)
+		return
+	}
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Println("Database close error:", err)
+		}
+	}(db)
+
+	// Получаем данные о коротких ссылках из базы данных
+	rows, err := db.Query("SELECT short, long, clicks FROM urls")
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		log.Println("Database query error:", err)
+		return
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Println("rows close error:", err)
+		}
+	}(rows)
+
+	// Создаем слайс для хранения информации о коротких ссылках
+	var urlInfoList []URLInfo
+
+	// Считываем данные из базы данных
+	for rows.Next() {
+		var urlInfo URLInfo
+		if err := rows.Scan(&urlInfo.Short, &urlInfo.Long, &urlInfo.Clicks); err != nil {
+			log.Println("Database scan error:", err)
+			continue
+		}
+		urlInfoList = append(urlInfoList, urlInfo)
+	}
+
+	// Рендерим шаблон
+	if err := templates.ExecuteTemplate(w, "stats.html", urlInfoList); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		log.Println("Template rendering error:", err)
+	}
+}
 
 func main() {
 	if len(databaseFile) == 0 {
@@ -46,6 +103,8 @@ func main() {
 
 	http.HandleFunc("/", redirectHandler)
 	http.HandleFunc("/shorten", shortenHandler)
+	// Добавляем обработчик для страницы статистики
+	http.HandleFunc("/stats", statsHandler)
 	port := os.Getenv("PORT")
 	if len(port) == 0 {
 		port = "8080"
@@ -144,7 +203,7 @@ func shortenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func generateShortID() string {
-	const alphabet = "abcdefghijklmnopqrstuvwxyz"
+	const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
 	shortURL := make([]byte, 6)
 	for i := range shortURL {
 		shortURL[i] = alphabet[rand.Intn(len(alphabet))]
