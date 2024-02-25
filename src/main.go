@@ -19,12 +19,17 @@ var (
 
 func main() {
 	// Проверяем, существует ли файл базы данных, если нет, то создаем его
-	if _, err := os.Stat("data/database.db"); os.IsNotExist(err) {
+	if _, err := os.Stat(databaseFile); os.IsNotExist(err) {
 		db, err := sql.Open("sqlite3", databaseFile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer db.Close()
+		defer func(db *sql.DB) {
+			err := db.Close()
+			if err != nil {
+				log.Println("Database close error:", err)
+			}
+		}(db)
 
 		// Создаем таблицу для хранения коротких и длинных URL
 		_, err = db.Exec("CREATE TABLE urls (id INTEGER PRIMARY KEY, short TEXT, long TEXT)")
@@ -35,18 +40,27 @@ func main() {
 
 	http.HandleFunc("/", redirectHandler)
 	http.HandleFunc("/shorten", shortenHandler)
-	http.ListenAndServe(":8080", nil)
+	port := os.Getenv("PORT")
+	err := http.ListenAndServe(":"+port, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	// Открываем соединение с базой данных
-	db, err := sql.Open("sqlite3", "data/database.db")
+	db, err := sql.Open("sqlite3", databaseFile)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		log.Println("Database connection error:", err)
 		return
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Println("Database close error:", err)
+		}
+	}(db)
 
 	// Получаем короткий URL из пути запроса
 	shortURL := strings.TrimPrefix(r.URL.Path, "/")
@@ -81,13 +95,18 @@ func shortenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Открываем соединение с базой данных
-	db, err := sql.Open("sqlite3", "data/database.db")
+	db, err := sql.Open("sqlite3", databaseFile)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		log.Println("Database connection error:", err)
 		return
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Println("Database close error:", err)
+		}
+	}(db)
 
 	// Генерируем короткий URL случайным образом
 	shortURL := generateShortID()
@@ -102,7 +121,10 @@ func shortenHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Формируем короткий URL и отправляем его клиенту
 	shortenedURL := baseUrl + shortURL
-	fmt.Fprintf(w, "Shortened URL: %s", shortenedURL)
+	_, err = fmt.Fprintf(w, "Shortened URL: %s", shortenedURL)
+	if err != nil {
+		return
+	}
 }
 
 func generateShortID() string {

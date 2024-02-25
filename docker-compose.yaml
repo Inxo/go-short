@@ -10,5 +10,6 @@ services:
     environment:
       - BASE_URL=https://inxo.ru/
       - DATABASE_FILE=data/database.db
+      - PORT=8081
 #    entrypoint: /app/bin/short
 #    command: ls
