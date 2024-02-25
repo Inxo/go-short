@@ -18,6 +18,12 @@ var (
 )
 
 func main() {
+	if len(databaseFile) == 0 {
+		databaseFile = "data/database.db"
+	}
+	if len(baseUrl) == 0 {
+		baseUrl = "http://localhost:8080/"
+	}
 	// Проверяем, существует ли файл базы данных, если нет, то создаем его
 	if _, err := os.Stat(databaseFile); os.IsNotExist(err) {
 		db, err := sql.Open("sqlite3", databaseFile)
@@ -32,7 +38,7 @@ func main() {
 		}(db)
 
 		// Создаем таблицу для хранения коротких и длинных URL
-		_, err = db.Exec("CREATE TABLE urls (id INTEGER PRIMARY KEY, short TEXT, long TEXT)")
+		_, err = db.Exec("CREATE TABLE urls (id INTEGER PRIMARY KEY, short TEXT, long TEXT, clicks INTEGER DEFAULT 0)")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -41,6 +47,9 @@ func main() {
 	http.HandleFunc("/", redirectHandler)
 	http.HandleFunc("/shorten", shortenHandler)
 	port := os.Getenv("PORT")
+	if len(port) == 0 {
+		port = "8080"
+	}
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -66,6 +75,13 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	shortURL := strings.TrimPrefix(r.URL.Path, "/")
 	if shortURL == "" {
 		http.NotFound(w, r)
+		return
+	}
+	// Обновляем счетчик переходов
+	_, err = db.Exec("UPDATE urls SET clicks = clicks + 1 WHERE short = ?", shortURL)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		log.Println("Database update error:", err)
 		return
 	}
 
