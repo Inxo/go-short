@@ -203,10 +203,39 @@ func shortenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func generateShortID() string {
-	const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+	const alphabet = "abcdefghijklmnopqrstuvwxyz"
 	shortURL := make([]byte, 6)
-	for i := range shortURL {
-		shortURL[i] = alphabet[rand.Intn(len(alphabet))]
+	for {
+		for i := range shortURL {
+			shortURL[i] = alphabet[rand.Intn(len(alphabet))]
+		}
+		// Проверяем уникальность короткой ссылки
+		if !shortURLExists(string(shortURL)) {
+			break
+		}
 	}
 	return string(shortURL)
+}
+
+func shortURLExists(shortURL string) bool {
+	db, err := sql.Open("sqlite3", databaseFile)
+	if err != nil {
+		log.Println("Database connection error:", err)
+		return true // В случае ошибки соединения, считаем, что короткая ссылка уже существует
+	}
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Println("Database close error:", err)
+		}
+	}(db)
+
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM urls WHERE short = ?", shortURL).Scan(&count)
+	if err != nil {
+		log.Println("Database query error:", err)
+		return true // В случае ошибки запроса, считаем, что короткая ссылка уже существует
+	}
+
+	return count > 0
 }
