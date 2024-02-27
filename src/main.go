@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -152,8 +153,14 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	unUrl, err := url.QueryUnescape(longURL)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
 	// Перенаправляем на длинный URL
-	http.Redirect(w, r, longURL, http.StatusFound)
+	http.Redirect(w, r, unUrl, http.StatusFound)
 }
 
 func shortenHandler(w http.ResponseWriter, r *http.Request) {
