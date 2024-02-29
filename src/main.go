@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -163,6 +164,11 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, unUrl, http.StatusFound)
 }
 
+type ShortUrl struct {
+	Origin string `json:"origin"`
+	Url    string `json:"short"`
+}
+
 func shortenHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -203,7 +209,20 @@ func shortenHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Формируем короткий URL и отправляем его клиенту
 	shortenedURL := baseUrl + shortURL
-	_, err = fmt.Fprintf(w, "Shortened URL: %s", shortenedURL)
+	r.Header.Add("Content-Type", "application/json")
+	u, err := url.QueryUnescape(longURL)
+	if err != nil {
+		return
+	}
+	urlShort := ShortUrl{
+		Origin: u,
+		Url:    shortenedURL,
+	}
+	js, err := json.Marshal(urlShort)
+	if err != nil {
+		return
+	}
+	_, err = fmt.Fprint(w, string(js))
 	if err != nil {
 		return
 	}
