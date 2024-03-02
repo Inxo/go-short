@@ -8,8 +8,8 @@ services:
     volumes:
       - ./data/database.db:/app/data/database.db
     environment:
-      - BASE_URL=https://inxo.ru/
+      - BASE_URL=http://localhost:8080/
       - DATABASE_FILE=data/database.db
-      - PORT=8081
+      - PORT=8080
 #    entrypoint: /app/bin/short
 #    command: ls

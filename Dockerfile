@@ -22,7 +22,8 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 # Копируем бинарный файл из предыдущего образа
 COPY --from=builder /app/build /app/bin
-COPY --from=builder /app/templates /app/bin/templates
+COPY --from=builder /app/templates /app/templates
+COPY  /data/database.db /app/data/database.db
 EXPOSE 8080
 # Определяем команду для запуска контейнера
 ENTRYPOINT /app/bin/my-url-shortener
