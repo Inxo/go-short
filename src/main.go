@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -27,7 +28,33 @@ type URLInfo struct {
 	Clicks int
 }
 
-func statsHandler(w http.ResponseWriter, _ *http.Request) {
+func statsHandler(w http.ResponseWriter, r *http.Request) {
+	offsetStr := r.URL.Query().Get("offset")
+	var offset int64
+	if offsetStr == "" {
+		offset = 0
+	} else {
+		var err error
+		offset, err = strconv.ParseInt(offsetStr, 10, 32)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			log.Println("Database error:", err)
+			return
+		}
+	}
+	var limit int64
+	limitStr := r.URL.Query().Get("limit")
+	if limitStr == "" {
+		limit = 100
+	} else {
+		var err error
+		limit, err = strconv.ParseInt(limitStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			log.Println("Database error:", err)
+			return
+		}
+	}
 	// Открываем соединение с базой данных
 	db, err := sql.Open("sqlite3", databaseFile)
 	if err != nil {
@@ -43,7 +70,7 @@ func statsHandler(w http.ResponseWriter, _ *http.Request) {
 	}(db)
 
 	// Получаем данные о коротких ссылках из базы данных
-	rows, err := db.Query("SELECT short, long, clicks FROM urls")
+	rows, err := db.Query("SELECT short, long, clicks FROM urls limit ? offset ? order by id desc ", limit, offset)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		log.Println("Database query error:", err)
@@ -97,7 +124,7 @@ func main() {
 		}(db)
 
 		// Создаем таблицу для хранения коротких и длинных URL
-		_, err = db.Exec("CREATE TABLE urls (id INTEGER PRIMARY KEY, short TEXT, long TEXT, clicks INTEGER DEFAULT 0)")
+		_, err = db.Exec("CREATE TABLE IF NOT EXISTS urls (id INTEGER PRIMARY KEY, short TEXT, long TEXT, clicks INTEGER DEFAULT 0)")
 		if err != nil {
 			log.Fatal(err)
 		}
