@@ -70,7 +70,7 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 	}(db)
 
 	// Получаем данные о коротких ссылках из базы данных
-	rows, err := db.Query("SELECT short, long, clicks FROM urls limit ? offset ? order by id desc ", limit, offset)
+	rows, err := db.Query("SELECT short, long, clicks FROM urls order by id desc limit ? offset ?", limit, offset)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		log.Println("Database query error:", err)
